@@ -208,12 +208,12 @@ var RarVolumeHeader = function(bstream) {
 var BLOCK_LZ = 0,
   BLOCK_PPM = 1;
 
-var rLDecode = [0,1,2,3,4,5,6,7,8,10,12,14,16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224],
-  rLBits = [0,0,0,0,0,0,0,0,1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4,  4,  5,  5,  5,  5],
-  rDBitLengthCounts = [4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,14,0,12],
-  rSDDecode = [0,4,8,16,32,64,128,192],
-  rSDBits = [2,2,3, 4, 5, 6,  6,  6];
-  
+var rLDecode = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224],
+    rLBits = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5],
+    rDBitLengthCounts = [4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 14, 0, 12],
+    rSDDecode = [0, 4, 8, 16, 32, 64, 128, 192],
+    rSDBits = [2, 2, 3, 4, 5, 6, 6, 6];
+
 var rDDecode = [0, 1, 2, 3, 4, 6, 8, 12, 16, 24, 32,
 			48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072,
 			4096, 6144, 8192, 12288, 16384, 24576, 32768, 49152, 65536, 98304,
@@ -276,9 +276,10 @@ function RarReadTables(bstream) {
     info("Error!  PPM not implemented yet");
     return;
   }
-  
+
+  var i;
   if (!bstream.readBits(1)) { //discard old table
-    for (var i = UnpOldTable.length; i--;) UnpOldTable[i] = 0;
+    for (i = UnpOldTable.length; i--;) UnpOldTable[i] = 0;
   }
 
   // read in bit lengths
@@ -305,23 +306,25 @@ function RarReadTables(bstream) {
   // now all 20 bit lengths are obtained, we construct the Huffman Table:
 
   RarMakeDecodeTables(BitLength, 0, BD, rBC);
-  
+
   var TableSize = rHUFF_TABLE_SIZE;
-  //console.log(DecodeLen, DecodePos, DecodeNum);
-  for (var i = 0; i < TableSize;) {
-    var num = RarDecodeNumber(bstream, BD);
+
+  for (i = 0; i < TableSize;) {
+    var num = RarDecodeNumber(bstream, BD),
+        N;
+
     if (num < 16) {
       Table[i] = (num + UnpOldTable[i]) & 0xf;
       i++;
     } else if(num < 18) {
-      var N = (num == 16) ? (bstream.readBits(3) + 3) : (bstream.readBits(7) + 11);
+      N = (num == 16) ? (bstream.readBits(3) + 3) : (bstream.readBits(7) + 11);
 
       while (N-- > 0 && i < TableSize) {
         Table[i] = Table[i - 1];
         i++;
       }
     } else {
-      var N = (num == 18) ? (bstream.readBits(3) + 3) : (bstream.readBits(7) + 11);
+      N = (num == 18) ? (bstream.readBits(3) + 3) : (bstream.readBits(7) + 11);
 
       while (N-- > 0 && i < TableSize) {
         Table[i++] = 0;
@@ -334,7 +337,7 @@ function RarReadTables(bstream) {
   RarMakeDecodeTables(Table, rNC + rDC, LDD, rLDC);
   RarMakeDecodeTables(Table, rNC + rDC + rLDC, RD, rRC);  
   
-  for (var i = UnpOldTable.length; i--;) {
+  for (i = UnpOldTable.length; i--;) {
     UnpOldTable[i] = Table[i];
   }
   return true;
@@ -370,13 +373,19 @@ function RarDecodeNumber(bstream, dec) {
 
 function RarMakeDecodeTables(BitLength, offset, dec, size) {
   var DecodeLen = dec.DecodeLen, DecodePos = dec.DecodePos, DecodeNum = dec.DecodeNum;
-  var LenCount = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-      TmpPos = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-      N = 0, M = 0;
-  for (var i = DecodeNum.length; i--;) DecodeNum[i] = 0;
-  for (var i = 0; i < size; i++) {
+  var LenCount = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      TmpPos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      N = 0, M = 0,
+      i;
+
+  for (i = DecodeNum.length; i--;) {
+    DecodeNum[i] = 0;
+  }
+
+  for (i = 0; i < size; i++) {
     LenCount[BitLength[i + offset] & 0xF]++;
   }
+
   LenCount[0] = 0;
   TmpPos[0] = 0;
   DecodePos[0] = 0;
@@ -856,21 +865,6 @@ var unrar = function(arrayBuffer) {
 			  var aname = a.filename;
 			  var bname = b.filename;
 			  return aname > bname ? 1 : -1;
-			  /*
-			  var aindex = aname.length, bindex = bname.length;
-        
-			  // Find the last number character from the back of the filename.
-			  while (aname[aindex-1] < '0' || aname[aindex-1] > '9') --aindex;
-			  while (bname[bindex-1] < '0' || bname[bindex-1] > '9') --bindex;
-
-			  // Find the first number character from the back of the filename
-			  while (aname[aindex-1] >= '0' && aname[aindex-1] <= '9') --aindex;
-			  while (bname[bindex-1] >= '0' && bname[bindex-1] <= '9') --bindex;
-			
-			  // parse them into numbers and return comparison
-			  var anum = parseInt(aname.substr(aindex), 10),
-				  bnum = parseInt(bname.substr(bindex), 10);
-			  return bnum - anum;*/
 		  });
 
       info(localFiles.map(function(a){return a.filename}).join(', '));
