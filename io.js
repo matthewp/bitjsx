@@ -182,7 +182,7 @@ bitjs.io = bitjs.io || {};
       this.readBits(1);
     }
 
-    var movePointers = movePointers || false;
+    movePointers = movePointers || false;
     var bytePtr = this.bytePtr,
       bitPtr = this.bitPtr;
 
