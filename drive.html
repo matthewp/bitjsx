@@ -5,75 +5,116 @@
 </head>
 <body>
   <input id='filechooser' type='file'></input>
-</body>
-<script>
+  <br />
+  <progress id="prog" value="0"></progress>
+  <div id="time"></div>
+  <script>
+    var PROGRESS = bitjs.archive.UnarchiveEvent.Type.PROGRESS,
+        START = bitjs.archive.UnarchiveEvent.Type.START,
+        INFO = bitjs.archive.UnarchiveEvent.Type.INFO,
+        EXTRACT = bitjs.archive.UnarchiveEvent.Type.EXTRACT,
+        FINISH = bitjs.archive.UnarchiveEvent.Type.FINISH;
 
-  function assertTrue(a) {
-  	if (!a) {
-  	  alert("'" + a + "' not true");
-  	}
-  }
-  function assertEquals(a,b) {
-  	if (a != b) {
-  	  alert("'" + a + "' != '" + b + "'")
-  	}
-  }
+    function assertTrue(a) {
+  	  if (!a) {
+  	    alert("'" + a + "' not true");
+  	  }
+    }
+    function assertEquals(a,b) {
+  	  if (a != b) {
+  	    alert("'" + a + "' != '" + b + "'")
+  	  }
+    }
 
-  function testAddRemoveEventListeners() {
-    var progress = function(e) { alert('progress') };
-    var progress2 = function(e) { alert('progress2') };
+    function testAddRemoveEventListeners() {
+      var progress = function(e) { alert('progress') };
+      var progress2 = function(e) { alert('progress2') };
 
-    var ua = new bitjs.archive.Unarchiver(null);
-    ua.addEventListener(bitjs.archive.UnarchiveEvent.Type.PROGRESS, progress);
-    ua.addEventListener(bitjs.archive.UnarchiveEvent.Type.PROGRESS, progress);
-    ua.addEventListener(bitjs.archive.UnarchiveEvent.Type.PROGRESS, progress);
-    ua.addEventListener(bitjs.archive.UnarchiveEvent.Type.PROGRESS, progress2);
-    ua.addEventListener(bitjs.archive.UnarchiveEvent.Type.PROGRESS, progress2);
-    assertEquals(2, ua.listeners_[bitjs.archive.UnarchiveEvent.Type.PROGRESS].length);
+      var ua = new bitjs.archive.Unarchiver(null);
+      ua.addEventListener(PROGRESS, progress);
+      ua.addEventListener(PROGRESS, progress);
+      ua.addEventListener(PROGRESS, progress);
+      ua.addEventListener(PROGRESS, progress2);
+      ua.addEventListener(PROGRESS, progress2);
+      assertEquals(2, ua.listeners_[PROGRESS].length);
   
-    ua.removeEventListener(bitjs.archive.UnarchiveEvent.Type.START, progress);
-    assertEquals(2, ua.listeners_[bitjs.archive.UnarchiveEvent.Type.PROGRESS].length);
+      ua.removeEventListener(START, progress);
+      assertEquals(2, ua.listeners_[PROGRESS].length);
 
-    ua.removeEventListener(bitjs.archive.UnarchiveEvent.Type.PROGRESS, progress);
-    assertEquals(1, ua.listeners_[bitjs.archive.UnarchiveEvent.Type.PROGRESS].length);
-  }
+      ua.removeEventListener(PROGRESS, progress);
+      assertEquals(1, ua.listeners_[PROGRESS].length);
+    }
 
-  function testAbstractUnarchiveThrows() {
-    var ua = new bitjs.archive.Unarchiver(null);
-    try {
-      ua.start();
-      alert("unarchive() didn't throw");
-    } catch(e) {}
-  }
+    function testAbstractUnarchiveThrows() {
+      var ua = new bitjs.archive.Unarchiver(null);
+      try {
+        ua.start();
+        alert("unarchive() didn't throw");
+      } catch(e) {}
+    }
 
-// unit tests
-//  testAddRemoveEventListeners();
-//  testAbstractUnarchiveThrows();
-//  var uz = new bitjs.archive.Unzipper(null);
+  // unit tests
+  //  testAddRemoveEventListeners();
+  //  testAbstractUnarchiveThrows();
+  //  var uz = new bitjs.archive.Unzipper(null);
+  var progEl = document.getElementById("prog"),
+      start = new Date(),
+      totalFiles = 0,
+      complete = 0;
 
-  document.body.querySelector("#filechooser").addEventListener("change",
-      function(evt) {
-        var inp = evt.target;
-        var filelist = inp.files;
-        if (filelist.length == 1) {
-          var blob = filelist[0];
-          var fr = new FileReader();
-          fr.onload = function() {
-            var ua = new bitjs.archive.Unzipper(fr.result);
-            ua.addEventListener(bitjs.archive.UnarchiveEvent.Type.INFO, function(e) {
-              console.log("info: " + e.msg);
-            })
-            ua.addEventListener(bitjs.archive.UnarchiveEvent.Type.PROGRESS, function(e) {
-              console.log("progress: " + e.msg);
-            })
-            ua.addEventListener(bitjs.archive.UnarchiveEvent.Type.EXTRACT, function(e) {
-              console.log("extract: " + e.unarchiveFile.filename);
-            })
-            ua.start();
-          };
-          fr.readAsArrayBuffer(blob);
-        }
-      }, false);
+    document.getElementById("filechooser").addEventListener("change",
+        function(evt) {
+          var inp = evt.target;
+          var filelist = inp.files;
+          if (filelist.length == 1) {
+            var blob = filelist[0];
+            var fr = new FileReader();
+            fr.onload = function() {
+              var ua;
+              if(/.rar/i.test(blob.name)) {
+                ua = new bitjs.archive.Unrarrer(fr.result);
+              } else if(/.zip/i.test(blob.name)) {
+                ua = new bitjs.archive.Unzipper(fr.result);
+              } else if(/.tar/i.test(blob.name)) {
+                ua = new bitjs.archive.Untarrer(fr.result);
+              } else {
+                alert("This archive doesn't appear to be a zip or rar file.");
+                return;
+              }
+              
+              ua.addEventListener(INFO, function(e) {
+                console.log("info: " + e.msg);
+              });
+              ua.addEventListener(PROGRESS, function(e) {
+                console.log("progress: " + e.msg);
 
-</script>
+                if(!totalFiles) {
+                  totalFiles = e.totalFilesInArchive;
+
+                  progEl.max = totalFiles;
+                }
+              });
+              ua.addEventListener(EXTRACT, function(e) {
+                console.log("extract: " + e.unarchivedFile.filename);
+
+                complete++;
+
+                progEl.value = complete;
+              });
+              ua.addEventListener(FINISH, function(e) {
+                console.log("finished.");
+
+                var fin = new Date(),
+                    diff = fin - start;
+
+                document.getElementById('time').textContent = diff;
+              });
+              ua.start();
+            };
+            fr.readAsArrayBuffer(blob);
+          }
+        }, false);
+
+  </script>
+</body>
 </html>
