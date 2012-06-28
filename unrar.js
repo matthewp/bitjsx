@@ -507,14 +507,19 @@ var rNC20 = 298,
 var UnpOldTable20 = new Array(rMC20 * 4);
 
 function RarReadTables20(bstream) {
-  var BitLength = new Array(rBC20);
-  var Table = new Array(rMC20 * 4);
-  var TableSize, N, I;
-  var AudioBlock = bstream.readBits(1);
-  if (!bstream.readBits(1))
-    for (var i = UnpOldTable20.length; i--;) UnpOldTable20[i] = 0;
+  var BitLength = new Array(rBC20),
+      Table = new Array(rMC20 * 4),
+      TableSize, N, I,
+      AudioBlock = bstream.readBits(1);
+
+  if(!bstream.readBits(1)) {
+    for(var i = UnpOldTable20.length; i--; ) {
+      UnpOldTable20[i] = 0;
+    }
+  }
+
   TableSize = rNC20 + rDC20 + rRC20;
-  for (var I = 0; I < rBC20; I++)
+  for (I = 0; I < rBC20; I++)
     BitLength[I] = bstream.readBits(4);
   RarMakeDecodeTables(BitLength, 0, BD, rBC20);
   I = 0;
@@ -557,6 +562,7 @@ var lastLength;
 
 function Unpack29(bstream, Solid) {
   // lazy initialize rDDecode and rDBits
+  var Distance, Length;
 
   var DDecode = new Array(rDC);
   var DBits = new Array(rDC);
@@ -592,14 +598,14 @@ function Unpack29(bstream, Solid) {
     }
 
     if (num >= 271) {
-      var Length = rLDecode[num -= 271] + 3;
+      Length = rLDecode[num -= 271] + 3;
 
       if((Bits = rLBits[num]) > 0) {
         Length += bstream.readBits(Bits);
       }
 
       var DistNumber = RarDecodeNumber(bstream, DD);
-      var Distance = DDecode[DistNumber] + 1;
+      Distance = DDecode[DistNumber] + 1;
 
       if ((Bits = DBits[DistNumber]) > 0) {
         if (DistNumber > 9) {
@@ -658,7 +664,7 @@ function Unpack29(bstream, Solid) {
 
     if (num < 263) {
       var DistNum = num - 259;
-      var Distance = rOldDist[DistNum];
+      Distance = rOldDist[DistNum];
 
       for(var I = DistNum; I > 0; I--) {
         rOldDist[I] = rOldDist[I - 1];
@@ -667,7 +673,7 @@ function Unpack29(bstream, Solid) {
       rOldDist[0] = Distance;
 
       var LengthNumber = RarDecodeNumber(bstream, RD);
-      var Length = rLDecode[LengthNumber] + 2;
+      Length = rLDecode[LengthNumber] + 2;
       if ((Bits = rLBits[LengthNumber]) > 0) {
         Length += bstream.readBits(Bits);
       }
@@ -676,7 +682,7 @@ function Unpack29(bstream, Solid) {
       continue;
     }
     if (num < 272) {
-      var Distance = rSDDecode[num -= 263] + 1;
+      Distance = rSDDecode[num -= 263] + 1;
       if ((Bits = rSDBits[num]) > 0) {
         Distance += bstream.readBits(Bits);
       }
@@ -740,21 +746,22 @@ function RarInsertOldDist(distance) {
 }
 
 //this is the real function, the other one is for debugging
+var rOldBuffers = [];
 function RarCopyString(length, distance) {
   var destPtr = rBuffer.ptr - distance;
 
-  if(destPtr < 0){    
+  if(destPtr < 0) {
     var l = rOldBuffers.length;
-    while(destPtr < 0){
+    while(destPtr < 0) {
       destPtr = rOldBuffers[--l].data.length + destPtr;
     }
     //TODO: lets hope that it never needs to read beyond file boundaries
     while(length--) {
       rBuffer.insertByte(rOldBuffers[l].data[destPtr++]);
     }
-    
   }
-  if (length > distance) {
+
+  if(length > distance) {
     while(length--) {
       rBuffer.insertByte(rBuffer.data[destPtr++]);
     }
@@ -766,15 +773,14 @@ function RarCopyString(length, distance) {
   
 }
 
-var rOldBuffers = [];
 // v must be a valid RarVolume
 function unpack(v) {
 
   // TODO: implement what happens when unpVer is < 15
   var Ver = v.header.unpVer <= 15 ? 15 : v.header.unpVer,
     Solid = v.header.LHD_SOLID,
-    bstream = new bitjs.io.BitStream(v.fileData.buffer, true /* rtl */, v.fileData.byteOffset, v.fileData.byteLength );
-  
+    bstream = new bitjs.io.BitStream(v.fileData.buffer, true /* rtl */, v.fileData.byteOffset, v.fileData.byteLength);
+
   rBuffer = new bitjs.io.ByteBuffer(v.header.unpackedSize);
 
   info("Unpacking " + v.filename + " RAR v" + Ver);
@@ -872,10 +878,9 @@ var unrar = function(arrayBuffer) {
     info("Found RAR signature");
 
     var mhead = new RarVolumeHeader(bstream);
-    if(mhead.headType != MAIN_HEAD) {
+    if(mhead.headType !== MAIN_HEAD) {
       info("Error! RAR did not include a MAIN_HEAD header");
-    }
-    else {
+    } else {
       var localFiles = [],
           localFile = null;
       do {

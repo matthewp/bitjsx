@@ -39,8 +39,7 @@ bitjs.io = bitjs.io || {};
     }
 
     var offset = opt_offset || 0;
-    var length = opt_length || ab.byteLength;
-    this.bytes = new Uint8Array(ab, offset, length);
+    this.bytes = new Uint8Array(ab, offset);
     this.bytePtr = 0; // tracks which byte we are on
     this.bitPtr = 0; // tracks which bit we are on (can have values 0 through 7)
     this.peekBits = rtl ? this.peekBits_rtl : this.peekBits_ltr;
@@ -214,7 +213,7 @@ bitjs.io = bitjs.io || {};
   bitjs.io.ByteStream = function(ab, opt_offset, opt_length) {
     var offset = opt_offset || 0;
     var length = opt_length || ab.byteLength;
-    this.bytes = new Uint8Array(ab, offset, length);
+    this.bytes = new Uint8Array(ab, offset); //vim
     this.ptr = 0;
   };
 
